@@ -1,4 +1,5 @@
 import functools
+import json
 
 from django.core.handlers.asgi import ASGIRequest
 from pydantic import BaseModel
@@ -90,8 +91,7 @@ class API:
                 request: ASGIRequest = next(filter(lambda arg: isinstance(arg, ASGIRequest), args), None)
                 if not request:
                     raise TypeError("ASGIRequest type not found.")
-
-                args = args + (body.serializer(**request.POST.dict()),)
+                args = args + (body.serializer(**json.loads(request.body)),)
                 return await func(*args, **kwargs)
 
             return wrapper
