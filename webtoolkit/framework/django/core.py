@@ -2,9 +2,16 @@ import functools
 import json
 
 from django.core.handlers.asgi import ASGIRequest
+from django.http import JsonResponse
 from pydantic import BaseModel
 
-from webtoolkit.openapi.core import APIBody, APIParameter, APIResponse, LocationType, OpenAPI
+from webtoolkit.openapi.core import (
+    APIBody,
+    APIParameter,
+    APIResponse,
+    LocationType,
+    OpenAPI,
+)
 
 
 class APIRoute(BaseModel):
@@ -55,7 +62,11 @@ class API:
                     elif parameter.location == LocationType.PATH:
                         args = args + (parameter.serializer(**kwargs),)
 
-                return await func(*args, **kwargs)
+                api_response = await func(*args, **kwargs)
+                if isinstance(api_response, BaseModel) and response.accept == "application/json":
+                    return JsonResponse(json.loads(api_response.json()), status=response.status_code)
+
+                return api_response
 
             return wrapper
 
@@ -92,7 +103,12 @@ class API:
                 if not request:
                     raise TypeError("ASGIRequest type not found.")
                 args = args + (body.serializer(**json.loads(request.body)),)
-                return await func(*args, **kwargs)
+
+                api_response = await func(*args, **kwargs)
+                if isinstance(api_response, BaseModel) and response.accept == "application/json":
+                    return JsonResponse(json.loads(api_response.json()), status=response.status_code)
+
+                return api_response
 
             return wrapper
 
